@@ -1,0 +1,58 @@
+version: '3.1'
+services:
+
+  worker:
+    image: golang
+    ports:
+     - "8123:8080"
+    volumes:
+     - ./src:/go/src/app
+    command: bash -c "cd /go/src/app/ && go get && go run *.go"
+    depends_on:
+     - db
+    environment:
+     MYSQL_DB_HOST: db
+     MYSQL_DB_NAME: trucraft
+     MYSQL_DB_USER: trucraft_service
+     MYSQL_PASSWORD_FILE: /run/secrets/mysql_password
+    secrets:
+     - mysql_password
+    deploy:
+      replicas: 4
+      update_config:
+        parallelism: 2
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+    networks:
+     internal:
+
+  db:
+    image: mysql
+    volumes:
+     - ~/mysql:/var/lib/mysql
+    ports:
+     - "3306:3306"
+    deploy:
+     placement:
+      constraints:
+       - node.role == manager
+    environment:
+     MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+     MYSQL_PASSWORD_FILE: /run/secrets/mysql_password
+     MYSQL_DATABASE: trucraft
+     MYSQL_USER: trucraft_service
+    secrets:
+     - mysql_root_password
+     - mysql_password
+    networks:
+     internal:
+
+secrets:
+ mysql_password:
+  external: true
+ mysql_root_password:
+  external: true
+
+networks:
+ internal:
